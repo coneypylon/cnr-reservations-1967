@@ -1,12 +1,16 @@
 import psycopg2
 import sys
 from datetime import datetime,UTC
+import configparser
 
 # fetch the config
-db = #something from config
-user = #something from config
-ps = #something from config
+config = configparser.ConfigParser()
+config.read("reservations.ini")
+db = config['DEFAULT']['db']
+user = config['DEFAULT']['user']
+ps = config['DEFAULT']['ps']
 
+# set up the db connection
 conn = psycopg2.connect("dbname=%s user=%s password=%s" % (db,user,ps))
 
 def doy2monthdate(year,day):
@@ -27,9 +31,9 @@ def pad(num,spaces):
 
 def findcars(legid,accomtype,curs):
 	if accomtype != 'A':
-		findcarsq = "SELECT capacity, carid, id, trainid FROM cardatetrain WHERE legid=%s AND accomtype='%s';" % (legid, accomtype)
+		findcarsq = "SELECT remcap, carid, id, trainid FROM cardatetrain WHERE legid=%s AND accomtype='%s';" % (legid, accomtype)
 	else:
-		findcarsq = "SELECT capacity, carid, id, trainid FROM cardatetrain WHERE legid=%s;" % (legid)
+		findcarsq = "SELECT remcap, carid, id, trainid FROM cardatetrain WHERE legid=%s;" % (legid)
 	curs.execute(findcarsq)
 	foundcars = curs.fetchall()
 	return foundcars
@@ -40,17 +44,10 @@ def fetchcar(legid,carcode,accomtype,curs,remcap=True):
 	if carcode not in ["00"]: # not a control code, ergo they want a specific car
 		outlst = []
 		for car in foundcars:
-			cardateid = car[2]
-			finduseq = "SELECT reservedseats FROM cardateusage WHERE cardateid=%s;" % cardateid
-			curs.execute(finduseq)
-			try:
-				usedseats = curs.fetchone()[0]
-			except TypeError:
-				usedseats = 0
 			if remcap: # remaining capacity, probably all we care about
-				usage = car[0] - usedseats
+				usage = car[0]
 			else:
-				usage = car[0] # technically not usage, but w/e
+				raise NotImplementedError
 			if carcode == '99':
 				outlst.append((usage,car[1],car[2],legid))
 			elif car[1].endswith(carcode):
@@ -112,56 +109,19 @@ def findextremelegs(startcity,endcity,trainid,date,curs):
 	foundlegs.append(curs.fetchone())
 	return foundlegs
 
-def cancelreso(resid,curs):
-	dellegresq = "DELETE FROM legreservations WHERE reservationid=%s" % resid
-	delresoq = "DELETE FROM reservations WHERE id=%s" % resid
-	curs.execute(dellegresq)
-	curs.execute(delresoq)
-	return 0
-
-def reducereso(resid,seats,curs):
-	reduresoq = "UPDATE reservations SET seats=seats-%s WHERE id=%s" % (seats,resid)
-	curs.execute(reduresoq)
-	return 0
-
 def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967,westbound=True):
 	if carcode in ['00','99']:
 		return [2,"INVCAR"] # can't be a control code
 	# find a car ID
 	extremelegs = findextremelegs(startcity,endcity,trainid,date,curs)
-	carid = fetchcar(extremelegs[0][0],carcode,accomreq,curs)[0][1]
-	findresosq = '''SELECT id,seats FROM reservations 
-			WHERE startcity='%s' AND date='%s' 
-			AND car='%s' AND endcity='%s';''' \
-			% (startcity,date,carid,endcity)
-	curs.execute(findresosq)
-	resos = curs.fetchall()
-	remainingseats = reqseats
-	subresos = []
-	for reso in resos:
-		if reso[1] == remainingseats: # a reservation with the same # of seats
-			subresos = [reso]
-			break
-		elif reso[1] < remainingseats: # many small reservations equal a big one
-			subresos.append(reso)
-	while remainingseats > 0 and len(subresos) > 0:
-		if subresos[0][1] == remainingseats:
-			cancelreso(subresos[0][0],curs)
-			remainingseats = 0
-		elif subresos[0][1] < remainingseats:
-			cancelreso(subresos[0][0],curs)
-			remainingseats = remainingseats - subresos[0][1]
-			subresos.pop(0)
-		else:
-			reducereso(subresos[0][0],remainingseats,curs)
-			remainingseats = 0
+	legs = findroutelegs(extremelegs[0][0],extremelegs[1][0],curs,westbound=westbound)
+	carid = fetchcar(extremelegs[0][0],carcode,accomreq,curs)
+	for leg in legs:
+		restorinv(reqseats,carcode,leg,curs)
 	ts = timestmp()
 	dt = doy2monthdate(year,date)
-	if remainingseats == 0:
-		outstr = "CL%s%s %s %s" % (trainid,carcode,dt, ts)
-		return (0,outstr)
-	else:
-		return [1,"INVQTY"]
+	outstr = "CL%s%s %s %s" % (trainid,carcode,dt, ts)
+	return (0,outstr)
 
 def getcaps(startcity,endcity,trainid,date,westbound,carcode,accomreq,curs):
 	foundlegs = findextremelegs(startcity,endcity,trainid,date,curs)
@@ -243,26 +203,22 @@ def findspecificcardates(legid,carid,curs):
 	curs.execute(grabq)
 	return curs.fetchone()[0]
 
-def makelegreservation(resid,cardateid,curs):
-	insertq = "INSERT INTO legreservations(reservationid,cardateid) VALUES (%s,%s) RETURNING id;" % (resid,cardateid)
-	curs.execute(insertq)
-	response = curs.fetchone()[0]
-	return response
+def makelegreservation(seats,cardateid,legid,curs):
+	updateq = "UPDATE CARDATES SET remcap = remcap - %s WHERE id = %s AND legid = %s;" % (seats,cardateid,legid)
+	curs.execute(updateq)
+	return 0
 
-def makereservation(date,carid,seats,startcity,endcity,curs):
-	resq = '''INSERT INTO reservations(date,car,seats,startcity,endcity) 
-		VALUES ('%s','%s',%s,'%s','%s') RETURNING id;''' \
-		% (date,carid,seats,startcity,endcity)
-	curs.execute(resq)
-	resid = curs.fetchone()[0]
-	return resid
+def restorinv(seats,carcode,legid,curs):
+	updateq = "UPDATE CARDATES SET remcap = remcap + %s WHERE RIGHT(carid,2) = '%s' AND legid = %s RETURNING remcap;" % (seats,carcode,legid)
+	curs.execute(updateq)
+	remcap = curs.fetchone()[0]
+	return [0,remcap]
 
-def reserve(carid,legs,seats,startcity,endcity,date,curs,year=1967):
+def reserve(carid,legs,seats,date,curs,year=1967):
 	try:
-		resid = makereservation(date,carid,seats,startcity,endcity,curs)
 		for leg in legs:
 			cardate = findspecificcardates(leg,carid,curs)
-			makelegreservation(resid,cardate,curs)
+			makelegreservation(seats,cardate,leg,curs)
 		ts = timestmp()
 		dt = doy2monthdate(year,date)
 		outstr = "OK%s %s %s" % (carid,dt, ts)
@@ -294,7 +250,7 @@ if __name__ == "__main__":
 		elif requesttype == "R": # reservation time
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
-				reservation = reserve(carquery[1],carquery[3],numseats,startlegp,destlegp,date,cur)
+				reservation = reserve(carquery[1],carquery[3],numseats,date,cur)
 				if reservation[0] == 0:
 					conn.commit()
 					print(reservation[1])
