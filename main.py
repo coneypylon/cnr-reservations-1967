@@ -90,15 +90,17 @@ def findroutelegs(startleg,endleg,curs,westbound=True):
 	if endindex != startindex:
 		if westbound:
 			sort = "ASC"
+			comp = "<="
 		else:
 			sort = "DESC"
+			comp = ">="
 		findorderedq = '''SELECT legid 
 			FROM legedgeindex 
-			WHERE %s <= startindex 
-			AND endindex <= %s 
+			WHERE %s %s startindex 
+			AND endindex %s %s 
 			AND trainid='%s' 
 			AND date - dayoftrain = %s
-			ORDER BY startindex %s;''' % (startindex,endindex,trainid,date-dayoftrain,sort)
+			ORDER BY startindex %s;''' % (startindex,comp,comp,endindex,trainid,date-dayoftrain,sort)
 		curs.execute(findorderedq)
 		legs = curs.fetchall()
 		outlegs = []
@@ -106,14 +108,18 @@ def findroutelegs(startleg,endleg,curs,westbound=True):
 			outlegs.append(leg[0])
 		return outlegs
 
-def findextremelegs(startcity,endcity,trainid,date,curs):
+def findextremelegs(startcity,endcity,trainid,date,westbound,curs):
+	if westbound:
+		sortdir = "ASC"
+	else:
+		sortdir = "DESC"
 	findstartlegq = '''SELECT legid, date, startcity, endcity, startindex, dayoftrain 
 			FROM legedgeindex 
 			WHERE startcity='%s' 
 			AND trainid='%s' 
 			AND date = %s 
-			ORDER BY startindex ASC;''' \
-			% (startcity,trainid,date)
+			ORDER BY startindex %s;''' \
+			% (startcity,trainid,date,sortdir)
 	curs.execute(findstartlegq)
 	foundlegs = [curs.fetchone()]
 	dayoftrain = foundlegs[0][5]
@@ -122,8 +128,8 @@ def findextremelegs(startcity,endcity,trainid,date,curs):
 			WHERE endcity='%s' 
 			AND trainid='%s' 
 			AND date - dayoftrain + %s = %s 
-			ORDER BY startindex ASC;''' \
-			% (endcity,trainid,dayoftrain,date)
+			ORDER BY startindex %s;''' \
+			% (endcity,trainid,dayoftrain,date,sortdir)
 	curs.execute(findendlegq)
 	foundlegs.append(curs.fetchone())
 	return foundlegs
@@ -132,7 +138,7 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 	if carcode in ['00','99']:
 		return [2,"INVCAR"] # can't be a control code
 	# find a car ID
-	extremelegs = findextremelegs(startcity,endcity,trainid,date,curs)
+	extremelegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
 	legs = findroutelegs(extremelegs[0][0],extremelegs[1][0],curs,westbound=westbound)
 	carid = fetchcar(extremelegs[0][0],carcode,accomreq,curs)
 	for leg in legs:
@@ -142,8 +148,9 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 	outstr = "CL%s%s %s %s" % (trainid,carcode,dt, ts)
 	return (0,outstr)
 
-def getcaps(startcity,endcity,trainid,date,westbound,carcode,accomreq,curs):
-	foundlegs = findextremelegs(startcity,endcity,trainid,date,curs)
+def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
+	westbound=getdirection(startcity,endcity,curs)
+	foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
 	capacity = 0
 	mincap = dict()
 	cars=[]
@@ -260,7 +267,10 @@ def equip(startcity,endcity, trainid, carcode, accomtype, seats, date, curs,year
 		outstr = "EQ%s %s %s %s" % (seats,carid,dt, ts)
 		return (0,outstr)
 	except Exception as e:
-		return (2,str(e))
+		if 'duplicate' in str(e).lower():
+			return(2,"INVCAR")
+		else:
+			return (3,str(e))
 
 def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 	mincap, legs, carlegs = getcaps(startcity,endcity,trainid,date,westbound,'99','A',curs)
@@ -284,8 +294,8 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 		outstr += "\n"
 	return (0,outstr[:-1])
 
-def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967,westbound=True):
-	mincap,legs = getcaps(startcity,endcity,trainid,date,westbound,carcode,accomreq,curs)[0:2]
+def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
+	mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
 	datstr = doy2monthdate(year,date)
 	foundcar = ''
 	carfound = False
