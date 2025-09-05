@@ -24,7 +24,7 @@ def timestmp():
 	return formatted_time.upper()
 
 def pad(num,spaces):
-	tnum = num
+	tnum = str(num)
 	while len(tnum)<spaces:
 		tnum = "0" + tnum
 	return tnum
@@ -60,6 +60,25 @@ def fetchcar(legid,carcode,accomtype,curs,remcap=True):
 def queryleg(legid, carcode,accomtype, curs):
 	fetchedcars = fetchcar(legid,carcode,accomtype,curs,remcap=True)
 	return fetchedcars
+
+def findedges(startcity,endcity,curs):
+	wb = getdirection(startcity,endcity,curs)
+	if wb:
+		getedgesq = "SELECT edgeid,startcity,endcity FROM edgeindex ORDER BY endindex ASC;"
+	else:
+		getedgesq = "SELECT edgeid,startcity,endcity FROM edgeindex ORDER BY endindex DESC;"
+	curs.execute(getedgesq)
+	alledges = curs.fetchall()
+	outedges = []
+	curfind = startcity
+	for edge in alledges:
+		if edge[1] == curfind and edge[2] == endcity: # we've reached our destination:
+			outedges.append(edge[0])
+			return outedges
+		elif edge[1] == curfind:
+			outedges.append(edge[0])
+			curfind = edge[2]
+	raise Exception
 
 def findroutelegs(startleg,endleg,curs,westbound=True):
 	fetchstartq = "SELECT startindex, date, dayoftrain, trainid FROM legedgeindex WHERE legid=%s;" % startleg
@@ -160,6 +179,89 @@ def getcities(legid,curs):
 	curs.execute(getcitiesq)
 	return curs.fetchone()
 
+def getindex(city,curs):
+	getcityvaluesq = "SELECT index FROM citiesmain WHERE mnemonic='%s'" % city
+	curs.execute(getcityvaluesq)
+	index = curs.fetchone()
+	if index == '':
+		raise ValueError
+	else:
+		return int(index[0])
+
+def getdirection(startcity,endcity,curs):
+	sindex = getindex(startcity,curs)
+	eindex = getindex(endcity,curs)
+	if eindex - sindex >= 0: # default to westbound
+		return True
+	else:
+		return False
+
+def createorconfirmtrain(trainid,startcity,endcity,curs):
+	fetchtrainq = "SELECT * FROM trains WHERE id='%s'" % trainid
+	curs.execute(fetchtrainq)
+	trains = curs.fetchall()
+	if len(trains) == 0:
+		wb = getdirection(startcity,endcity,curs)
+		createtrainq = "INSERT INTO trains(id,westbound) VALUES ('%s',%s);" % (trainid,wb)
+		curs.execute(createtrainq)
+	return
+
+def findlegbyedge(edge,trainid,date,curs):
+	findlegq = "SELECT id FROM legs WHERE trainid='%s' AND edgeid=%s AND date='%s';" % (trainid,edge,date)
+	curs.execute(findlegq)
+	legs = curs.fetchall()
+	return legs
+
+def checkormakelegs(edges,trainid,date,curs):
+	stublegq = "INSERT INTO legs(trainid,edgeid,date,dayoftrain) VALUES "
+	legs = []
+	tomake = 0
+	for edge in edges:
+		idate = int(date)
+		dayoftrain = 0 #someday need to handle this
+		convdate = pad(idate + dayoftrain,2)
+		leg = findlegbyedge(edge,trainid,convdate,curs)
+		if len(leg) == 0: # no legs 
+			stublegq += "('%s',%s,'%s',0)," % (trainid,edge,date)
+			tomake += 1
+		elif len(leg) == 1: # we expect this
+			legs.append(leg[0][0])
+		else: # too many legs
+			raise ValueError
+	if tomake > 0:
+		curs.execute(stublegq[:-1] + " RETURNING id;")
+	for x in curs.fetchall(): # I can't remember if python hates extending with a tuple
+		legs.append(x[0])
+	return legs
+
+def makecardates(legs,carid,accomtype,seats,curs):
+	stubcdateq = "INSERT INTO cardates(legid,carid,accomtype,remcap) VALUES "
+	for leg in legs:
+		stubcdateq += "(%s,'%s','%s',%s)," % (leg,carid,accomtype,seats)
+	curs.execute(stubcdateq[:-1] + ";")
+	return
+
+def equip(startcity,endcity, trainid, carcode, accomtype, seats, date, curs,year=1967):
+	try:
+		createorconfirmtrain(trainid,startcity,endcity,curs)
+	except TypeError: # the city doesn't exist
+		return (1,"INVCITY")
+	# need to make legs now
+	try:
+		edges = findedges(startcity,endcity,curs)
+	except NotFoundError:
+		return (1,"INVCITY")
+	legs = checkormakelegs(edges,trainid,date,curs)
+	try:
+		carid = trainid + carcode
+		makecardates(legs,carid,accomtype,seats,curs)
+		ts = timestmp()
+		dt = doy2monthdate(year,date)
+		outstr = "EQ%s %s %s %s" % (seats,carid,dt, ts)
+		return (0,outstr)
+	except Exception as e:
+		return (2,str(e))
+
 def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 	mincap, legs, carlegs = getcaps(startcity,endcity,trainid,date,westbound,'99','A',curs)
 	if len(carlegs) > 10:
@@ -247,20 +349,23 @@ if __name__ == "__main__":
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
 				print(carquery[2])
-		elif requesttype == "R": # reservation time
+		elif requesttype in ["R","D"]: # reservation time
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
 				reservation = reserve(carquery[1],carquery[3],numseats,date,cur)
 				if reservation[0] == 0:
 					conn.commit()
-					print(reservation[1])
-		elif requesttype == "K":
+				print(reservation[1])
+		elif requesttype in ["K","A"]:
 			cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if cancellation[0] == 0:
 				conn.commit()
-				print(cancellation[1])
-			else:
-				print(cancellation[1])
+			print(cancellation[1])
+		elif requesttype =="E":
+			result = equip(startlegp,destlegp,trainid,carcode,accomreq,numseats,date,cur)
+			if result[0] == 0:
+				conn.commit()
+			print(result[1])
 	else: # supervisor card
 		requesttype = request[0]
 		startcity = request[1:4]
