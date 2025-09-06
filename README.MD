@@ -1,4 +1,4 @@
-## CNR Electronic Passenger Reservation System (1967)
+## CNR Electronic Passenger Reservation System (1967) Replica
 Python/Postgres implementation
 
 A simple recreation of the 1960s Collins 8401-based reservation system that CN used.
