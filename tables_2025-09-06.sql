@@ -104,7 +104,8 @@ CREATE TABLE public.legs (
     dayoftrain integer,
     id integer NOT NULL,
     edgeid integer,
-    date integer
+    date integer,
+    closed boolean
 );
 
 
@@ -120,7 +121,8 @@ CREATE VIEW public.cardatetrain AS
     c.remcap,
     c.legid,
     c.accomtype,
-    l.trainid
+    l.trainid,
+    l.closed
    FROM (public.cardates c
      JOIN public.legs l ON ((c.legid = l.id)));
 
@@ -279,6 +281,7 @@ CREATE VIEW public.legedgeindex AS
     l.id AS legid,
     l.edgeid,
     l.date,
+    l.closed,
     e.startcity,
     e.endcity,
     e.startindex,
@@ -587,161 +590,161 @@ ALTER TABLE ONLY public.reservations
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
 --
 
-GRANT ALL ON SCHEMA public TO <YOURUSERHERE>;
+GRANT ALL ON SCHEMA public TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE cardates; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.cardates TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.cardates TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE cardatesfancy; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.cardatesfancy TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.cardatesfancy TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: SEQUENCE cardates_id_seq; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON SEQUENCE public.cardates_id_seq TO <YOURUSERHERE>;
+GRANT ALL ON SEQUENCE public.cardates_id_seq TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: SEQUENCE cardates_id_seq1; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON SEQUENCE public.cardates_id_seq1 TO <YOURUSERHERE>;
+GRANT ALL ON SEQUENCE public.cardates_id_seq1 TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE legs; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.legs TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.legs TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE cardatetrain; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.cardatetrain TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.cardatetrain TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE cardatetrainfancy; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.cardatetrainfancy TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.cardatetrainfancy TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE legreservations; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.legreservations TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.legreservations TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE reservations; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.reservations TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.reservations TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE cardateusage; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.cardateusage TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.cardateusage TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE citiesmain; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.citiesmain TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.citiesmain TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE edges; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.edges TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.edges TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE edgeindex; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.edgeindex TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.edgeindex TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: SEQUENCE edges_id_seq; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON SEQUENCE public.edges_id_seq TO <YOURUSERHERE>;
+GRANT ALL ON SEQUENCE public.edges_id_seq TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE legcars; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.legcars TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.legcars TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE legedgeindex; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.legedgeindex TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.legedgeindex TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: SEQUENCE legreservations_id_seq; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON SEQUENCE public.legreservations_id_seq TO <YOURUSERHERE>;
+GRANT ALL ON SEQUENCE public.legreservations_id_seq TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: SEQUENCE legs_id_seq; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON SEQUENCE public.legs_id_seq TO <YOURUSERHERE>;
+GRANT ALL ON SEQUENCE public.legs_id_seq TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE linktrains; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.linktrains TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.linktrains TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: SEQUENCE reservations_id_seq; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON SEQUENCE public.reservations_id_seq TO <YOURUSERHERE>;
+GRANT ALL ON SEQUENCE public.reservations_id_seq TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: TABLE trains; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.trains TO <YOURUSERHERE>;
+GRANT ALL ON TABLE public.trains TO <YOURSQLUSERHERE>;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO <YOURUSERHERE>;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO <YOURSQLUSERHERE>;
 
 
 --
