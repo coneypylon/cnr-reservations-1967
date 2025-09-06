@@ -61,6 +61,17 @@ def queryleg(legid, carcode,accomtype, curs):
 	fetchedcars = fetchcar(legid,carcode,accomtype,curs,remcap=True)
 	return fetchedcars
 
+def traverse(remnodes,target)
+	raise Exception
+
+class linkedEdge:
+	def __init__(self,id,startcity,endcities):
+		self.id = id
+		self.start=startcity
+		self.out =  []
+		for city in endcities:
+			self.out.append(linkedEdge(endcities))
+
 def findedges(startcity,endcity,curs):
 	wb = getdirection(startcity,endcity,curs)
 	if wb:
@@ -71,7 +82,7 @@ def findedges(startcity,endcity,curs):
 	alledges = curs.fetchall()
 	outedges = []
 	curfind = startcity
-	for edge in alledges:
+	for edge in range(0,len(alledges):
 		if edge[1] == curfind and edge[2] == endcity: # we've reached our destination:
 			outedges.append(edge[0])
 			return outedges
