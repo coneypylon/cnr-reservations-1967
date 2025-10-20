@@ -1,1 +1,0 @@
-select L1.trainid, L1.startcity, L1.endcity, L2.trainid, L2.startcity, L2.endcity from legedgeindex L1 LEFT JOIN legedgeindex L2 ON L1.endcity=L2.startcity WHERE NOT L1.closed AND L1.startcity = 'MTL' and L2.endcity = 'PEM';
