@@ -65,38 +65,30 @@ def queryleg(legid, carcode,accomtype, curs):
 	fetchedcars = fetchcar(legid,carcode,accomtype,curs,remcap=True)
 	return fetchedcars
 
-def findedges(startcity,endcity,curs):
+def findedges(startcity,endcity,trainid,curs):
 	wb = getdirection(startcity,endcity,curs)
-	traved = "startcity"
-	travst = "endcity"
+	startindexq = "SELECT index FROM citiesmain WHERE mnemonic='%s';" % startcity
+	endindexq = "SELECT index FROM citiesmain WHERE mnemonic='%s';" % endcity
+	curs.execute(startindexq)
+	startindex = curs.fetchone()[0]
+	curs.execute(endindexq)
+	endindex = curs.fetchone()[0]
 	if wb:
-		order = " ORDER BY startindex ASC"
+		comp = "<="
 	else:
-		order = " ORDER BY endindex DESC"
-	found = False
-	cities = []
-	currentlevel = 1
-	while not found:
-		ids = 'SELECT L1.edgeid'
-		joins = ' FROM edgeindex L1'
-		for x in range(2,currentlevel+1):
-			ids += ', L%s.edgeid' % str(x)
-			joins += ' LEFT JOIN edgeindex L%s ON L%s.%s=L%s.%s' % \
-			(str(x),str(x-1),travst,str(x),traved)
-		qry = ids + joins + ' WHERE L1.startcity = \'%s\' and %s.endcity = \'%s\'' % \
-			(startcity,"L" + str(currentlevel),endcity)
-		curs.execute(qry)
-		print(qry)
-		try:
-			result = curs.fetchone()
-			print(result)
-			for x in result:
-				cities.append(x)
-			return cities
-		except:
-			currentlevel += 1
-	raise Exception
-'''select L1.id, L2.id, L3.id from edges L1 LEFT JOIN edges L2 ON L1.endcity=L2.startcity LEFT JOIN edges L3 ON L2.endcity=L3.startcity WHERE L1.startcity = 'MTL' and L3.endcity = 'NBY';'''
+		comp = ">="
+	findedgesq = '''SELECT edgeid 
+	FROM trainedgesindex 
+	WHERE %s %s startindex 
+	AND endindex %s %s 
+	AND trainid='%s';''' % \
+		(startindex,comp,comp,endindex,trainid)
+	curs.execute(findedgesq)
+	edges = curs.fetchall()
+	outedges = []
+	for edge in edges:
+		outedges.append(edge[0])
+	return outedges
 
 def findroutelegs(startleg,endleg,curs,westbound=True):
 	fetchstartq = "SELECT startindex, date, dayoftrain, trainid FROM legedgeindex WHERE legid=%s;" % startleg
@@ -105,26 +97,25 @@ def findroutelegs(startleg,endleg,curs,westbound=True):
 	fetchendq = "SELECT endindex FROM legedgeindex WHERE legid=%s;" % endleg
 	curs.execute(fetchendq)
 	endindex = curs.fetchone()[0]
-	if endindex != startindex:
-		if westbound:
-			sort = "ASC"
-			comp = "<="
-		else:
-			sort = "DESC"
-			comp = ">="
-		findorderedq = '''SELECT legid, closed 
-			FROM legedgeindex 
-			WHERE %s %s startindex 
-			AND endindex %s %s 
-			AND trainid='%s' 
-			AND date - dayoftrain = %s
-			ORDER BY startindex %s;''' % (startindex,comp,comp,endindex,trainid,date-dayoftrain,sort)
-		curs.execute(findorderedq)
-		legs = curs.fetchall()
-		outlegs = []
-		for leg in legs:
-			outlegs.append(leg)
-		return outlegs
+	if westbound:
+		sort = "ASC"
+		comp = "<="
+	else:
+		sort = "DESC"
+		comp = ">="
+	findorderedq = '''SELECT legid, closed 
+		FROM legedgeindex 
+		WHERE %s %s startindex 
+		AND endindex %s %s 
+		AND trainid='%s' 
+		AND date - dayoftrain = %s
+		ORDER BY startindex %s;''' % (startindex,comp,comp,endindex,trainid,date-dayoftrain,sort)
+	curs.execute(findorderedq)
+	legs = curs.fetchall()
+	outlegs = []
+	for leg in legs:
+		outlegs.append(leg)
+	return outlegs
 
 def closeleg(legid,curs):
 	closeq = "UPDATE legs SET closed = true WHERE id = %s" % legid
@@ -294,7 +285,7 @@ def equip(startcity,endcity, trainid, carcode, accomtype, seats, date, curs,year
 		return (1,"INVCITY")
 	# need to make legs now
 	try:
-		edges = findedges(startcity,endcity,curs)
+		edges = findedges(startcity,endcity,trainid,curs)
 	except NotFoundError:
 		return (1,"INVCITY")
 	legs = checkormakelegs(edges,trainid,date,curs)
