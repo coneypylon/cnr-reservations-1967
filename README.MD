@@ -1,15 +1,16 @@
-## CNR Electronic Passenger Reservation System (1967)
+## CNR Electronic Passenger Reservation System (1967) Replica
 Python/Postgres implementation
 
 A simple recreation of the 1960s Collins 8401-based reservation system that CN used.
 
 ### Setup
 1. DB Setup
-Make Postgres database that Python can access. You can create a user for it (I did) or just use postgres (obviously not super safe by default)
 
+Make a Postgres database that Python can access. You can create a user for it (I did) or just use postgres (obviously not super safe by default)
 Once the database is made, use the tables export included in the repo to execute the commands needed to recreate the required schema. Note that it's a dump of my dev database and has a few extra tables not currently used.
 
 2. Config creation
+
 You'll need to make a reservations.ini file with the following contents:
 
 ```
