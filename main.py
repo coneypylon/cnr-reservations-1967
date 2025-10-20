@@ -171,7 +171,7 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 	legs = findroutelegs(extremelegs[0][0],extremelegs[1][0],curs,westbound=westbound)
 	carid = fetchcar(extremelegs[0][0],carcode,accomreq,curs)
 	for leg in legs:
-		restorinv(reqseats,carcode,leg,curs)
+		restorinv(reqseats,carcode,leg[0],curs)
 	ts = timestmp()
 	dt = doy2monthdate(year,date)
 	outstr = "CL%s%s %s %s" % (trainid,carcode,dt, ts)
