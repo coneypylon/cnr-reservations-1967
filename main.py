@@ -65,35 +65,38 @@ def queryleg(legid, carcode,accomtype, curs):
 	fetchedcars = fetchcar(legid,carcode,accomtype,curs,remcap=True)
 	return fetchedcars
 
-def traverse(remnodes,target)
-	raise Exception
-
-class linkedEdge:
-	def __init__(self,id,startcity,endcities):
-		self.id = id
-		self.start=startcity
-		self.out =  []
-		for city in endcities:
-			self.out.append(linkedEdge(endcities))
-
 def findedges(startcity,endcity,curs):
 	wb = getdirection(startcity,endcity,curs)
+	traved = "startcity"
+	travst = "endcity"
 	if wb:
-		getedgesq = "SELECT edgeid,startcity,endcity FROM edgeindex ORDER BY endindex ASC;"
+		order = " ORDER BY startindex ASC"
 	else:
-		getedgesq = "SELECT edgeid,startcity,endcity FROM edgeindex ORDER BY endindex DESC;"
-	curs.execute(getedgesq)
-	alledges = curs.fetchall()
-	outedges = []
-	curfind = startcity
-	for edge in range(0,len(alledges):
-		if edge[1] == curfind and edge[2] == endcity: # we've reached our destination:
-			outedges.append(edge[0])
-			return outedges
-		elif edge[1] == curfind:
-			outedges.append(edge[0])
-			curfind = edge[2]
+		order = " ORDER BY endindex DESC"
+	found = False
+	cities = []
+	currentlevel = 1
+	while not found:
+		ids = 'SELECT L1.edgeid'
+		joins = ' FROM edgeindex L1'
+		for x in range(2,currentlevel+1):
+			ids += ', L%s.edgeid' % str(x)
+			joins += ' LEFT JOIN edgeindex L%s ON L%s.%s=L%s.%s' % \
+			(str(x),str(x-1),travst,str(x),traved)
+		qry = ids + joins + ' WHERE L1.startcity = \'%s\' and %s.endcity = \'%s\'' % \
+			(startcity,"L" + str(currentlevel),endcity)
+		curs.execute(qry)
+		print(qry)
+		try:
+			result = curs.fetchone()
+			print(result)
+			for x in result:
+				cities.append(x)
+			return cities
+		except:
+			currentlevel += 1
 	raise Exception
+'''select L1.id, L2.id, L3.id from edges L1 LEFT JOIN edges L2 ON L1.endcity=L2.startcity LEFT JOIN edges L3 ON L2.endcity=L3.startcity WHERE L1.startcity = 'MTL' and L3.endcity = 'NBY';'''
 
 def findroutelegs(startleg,endleg,curs,westbound=True):
 	fetchstartq = "SELECT startindex, date, dayoftrain, trainid FROM legedgeindex WHERE legid=%s;" % startleg
