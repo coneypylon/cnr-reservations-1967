@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@main
     - name: Deploy code to Lambda
-      uses: coneypylon/action-lambda-python-zip@v1.0
+      uses: coneypylon/action-lambda-python-zip@1.0
       with:
         lambda_layer_arn: ${{ secrets.LAMBDA_LAYER_ARN }}
         lambda_function_name: ${{ secrets.LAMBDA_FUNCTION_NAME }}
