@@ -1,4 +1,5 @@
 import psycopg2
+import json
 import sys
 from datetime import datetime,UTC
 import configparser
