@@ -424,10 +424,10 @@ def lambda_handler(event, context): # we are in a lambda
 	cur = conn.cursor()
 	request = event.query.upper()
 	response = parse_n_route_string(request,cur)
-    return {
-        'statusCode': 200,
-        'body': json.dumps(response)
-    }
+	return {
+		'statusCode': 200,
+		'body': json.dumps(response)
+	}
 
 
 if __name__ == "__main__": # we're not in a lambda anymore
@@ -443,3 +443,4 @@ if __name__ == "__main__": # we're not in a lambda anymore
 
 	cur = conn.cursor()
 	request = sys.argv[1].upper()
+	print(parse_n_route_string(request,cur))
