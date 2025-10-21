@@ -428,7 +428,8 @@ def lambda_handler(event, context): # we are in a lambda
 	try:
 		request = event["query"].upper()
 	except KeyError:
-		request = json.loads(event["body"]["query"]).upper()
+		rawrequest = json.loads(event["body"])
+		request = rawrequest["query"].upper()
 	response = parse_n_route_string(request,cur)
 	return {
 		'statusCode': 200,
