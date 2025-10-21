@@ -1,4 +1,4 @@
-import aws_psycopg2 as psycopg2
+import psycopg2
 import sys
 from datetime import datetime,UTC
 import configparser
