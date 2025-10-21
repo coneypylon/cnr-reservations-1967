@@ -424,7 +424,11 @@ def lambda_handler(event, context): # we are in a lambda
 	url = os.environ.get('url')
 	conn = psycopg2.connect("host=%s dbname=%s user=%s password=%s" % (url,db,user,ps))
 	cur = conn.cursor()
-	request = event["query"].upper()
+	print(event)
+	try:
+		request = event["query"].upper()
+	except KeyError:
+		request = event["body"]["query"].upper()
 	response = parse_n_route_string(request,cur)
 	return {
 		'statusCode': 200,
