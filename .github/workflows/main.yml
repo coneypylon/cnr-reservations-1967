@@ -1,0 +1,19 @@
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@main
+    - name: Deploy code to Lambda
+      uses: qubitro/action-lambda-python-zip@v1.0
+      with:
+        lambda_layer_arn: ${{ secrets.LAMBDA_LAYER_ARN }}
+        lambda_function_name: ${{ secrets.LAMBDA_FUNCTION_NAME }}
+        lambda_region: 'ca-central-1'
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
