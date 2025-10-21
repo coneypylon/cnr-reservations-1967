@@ -369,48 +369,48 @@ def reserve(carid,legs,seats,date,curs,year=1967):
 
 
 def parse_n_route_string(string,curs):
-	if len(request) != 18 and len(request) != 13:
+	if len(string) != 18 and len(string) != 13:
 		return "usage: script.py RASLPDLPNSTRNCNCDT"
-	elif len(request) == 18: # normal card
-		requesttype = request[0]
-		accomreq = request[1]
-		startlegp = request[2:5]
-		destlegp = request[5:8]
-		numseats = int(request[8:10])
-		trainid = request[10:13]
-		carcode = request[13:15]
-		date = request[15:18]
-		if requesttype == "Q":
+	elif len(string) == 18: # normal card
+		stringtype = string[0]
+		accomreq = string[1]
+		startlegp = string[2:5]
+		destlegp = string[5:8]
+		numseats = int(string[8:10])
+		trainid = string[10:13]
+		carcode = string[13:15]
+		date = string[15:18]
+		if stringtype == "Q":
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
 				return carquery[2]
-		elif requesttype in ["R","D"]: # reservation time
+		elif stringtype in ["R","D"]: # reservation time
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
 				reservation = reserve(carquery[1],carquery[3],numseats,date,cur)
 				if reservation[0] == 0:
 					conn.commit()
 				return reservation[1]
-		elif requesttype in ["K","A"]:
+		elif stringtype in ["K","A"]:
 			cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if cancellation[0] == 0:
 				conn.commit()
 			return cancellation[1]
-		elif requesttype =="E":
+		elif stringtype =="E":
 			result = equip(startlegp,destlegp,trainid,carcode,accomreq,numseats,date,cur)
 			if result[0] == 0:
 				conn.commit()
 			return result[1]
 	else: # supervisor card
-		requesttype = request[0]
-		startcity = request[1:4]
-		endcity = request[4:7]
-		trainid = request[7:10]
-		date = request[10:13]
-		if requesttype == "T":
+		stringtype = string[0]
+		startcity = string[1:4]
+		endcity = string[4:7]
+		trainid = string[7:10]
+		date = string[10:13]
+		if stringtype == "T":
 			manifest = trainman(startcity,endcity,trainid,date,cur)
 			return manifest[1]
-		elif requesttype == "X":
+		elif stringtype == "X":
 			closeout = close(startcity,endcity,trainid,date,cur)
 			if closeout[0] == 0:
 				conn.commit()

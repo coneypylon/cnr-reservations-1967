@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@main
+    - uses: actions/checkout@master
     - name: Deploy code to Lambda
       uses: coneypylon/action-lambda-python-zip@1.1
       with:
