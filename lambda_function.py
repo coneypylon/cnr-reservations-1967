@@ -369,7 +369,7 @@ def reserve(carid,legs,seats,date,curs,year=1967):
 		return (2,str(e))
 
 
-def parse_n_route_string(string,curs):
+def parse_n_route_string(string,curs,conn):
 	if len(string) != 18 and len(string) != 13:
 		return "usage: script.py RASLPDLPNSTRNCNCDT"
 	elif len(string) == 18: # normal card
@@ -424,13 +424,13 @@ def lambda_handler(event, context): # we are in a lambda
 	url = os.environ.get('url')
 	conn = psycopg2.connect("host=%s dbname=%s user=%s password=%s" % (url,db,user,ps))
 	cur = conn.cursor()
-	print(event)
 	try:
 		request = event["query"].upper()
 	except KeyError:
 		rawrequest = json.loads(event["body"])
 		request = rawrequest["query"].upper()
-	response = parse_n_route_string(request,cur)
+	print(request)
+	response = parse_n_route_string(request,cur,conn)
 	cur.close()
 
 	return {
