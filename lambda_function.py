@@ -36,7 +36,6 @@ def findcars(legid,accomtype,curs):
 
 def fetchcar(legid,carcode,accomtype,curs,remcap=True):
 	foundcars = findcars(legid,accomtype,curs)
-	matchedcar = ''
 	if carcode not in ["00"]: # not a control code, ergo they want a specific car
 		outlst = []
 		for car in foundcars:
@@ -161,7 +160,6 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 	# find a car ID
 	extremelegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
 	legs = findroutelegs(extremelegs[0][0],extremelegs[1][0],curs,westbound=westbound)
-	carid = fetchcar(extremelegs[0][0],carcode,accomreq,curs)
 	for leg in legs:
 		restorinv(reqseats,carcode,leg[0],curs)
 	ts = timestmp()
@@ -172,7 +170,6 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 	westbound=getdirection(startcity,endcity,curs)
 	foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
-	capacity = 0
 	mincap = dict()
 	cars=[]
 	carlegs=dict()
@@ -195,12 +192,10 @@ def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 			carlegs[car[1]] = [(car[3],car[0],car[4])]
 		carid = car[1]
 		carcap = car[0]
-		cdid = car[2]
 		if not carid in mincap.keys():
 			mincap[carid] = carcap
 		elif carcap < mincap[carid]:
 			mincap[carid] = carcap
-		capacity = mincap
 	return (mincap,legs,carlegs)
 
 def getcities(legid,curs):
@@ -298,7 +293,6 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 	mincap, legs, carlegs = getcaps(startcity,endcity,trainid,date,'99','A',curs)
 	if len(carlegs) > 10:
 		return (1,"INVTO")
-	legnames = []
 	outstr = '     '
 	for leg in range(0,len(legs)):
 		names = getcities(legs[leg][0],curs)
