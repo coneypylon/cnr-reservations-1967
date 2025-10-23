@@ -432,7 +432,6 @@ def lambda_handler(event, context): # we are in a lambda
 		request = rawrequest["query"].upper()
 	response = parse_n_route_string(request,cur)
 	cur.close()
-	conn.close()
 
 	return {
 		'statusCode': 200,
