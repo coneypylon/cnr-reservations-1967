@@ -1,4 +1,4 @@
-import psycopg2
+import sqlite3
 import sys
 from datetime import datetime,UTC
 import configparser
@@ -58,8 +58,8 @@ def queryleg(legid, carcode,accomtype, curs):
 
 def findedges(startcity,endcity,trainid,curs):
 	wb = getdirection(startcity,endcity,curs)
-	startindexq = "SELECT index FROM citiesmain WHERE mnemonic='%s';" % startcity
-	endindexq = "SELECT index FROM citiesmain WHERE mnemonic='%s';" % endcity
+	startindexq = "SELECT idex FROM citiesmain WHERE mnemonic='%s';" % startcity
+	endindexq = "SELECT idex FROM citiesmain WHERE mnemonic='%s';" % endcity
 	curs.execute(startindexq)
 	startindex = curs.fetchone()[0]
 	curs.execute(endindexq)
@@ -208,13 +208,13 @@ def getcities(legid,curs):
 	return curs.fetchone()
 
 def getindex(city,curs):
-	getcityvaluesq = "SELECT index FROM citiesmain WHERE mnemonic='%s'" % city
+	getcityvaluesq = "SELECT idex FROM citiesmain WHERE mnemonic='%s'" % city
 	curs.execute(getcityvaluesq)
-	index = curs.fetchone()
-	if index == '':
+	idex = curs.fetchone()
+	if idex == '':
 		raise ValueError
 	else:
-		return int(index[0])
+		return int(idex[0])
 
 def getdirection(startcity,endcity,curs):
 	sindex = getindex(startcity,curs)
@@ -319,7 +319,10 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 	return (0,outstr[:-1])
 
 def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
-	mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
+	try:
+		mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
+	except TypeError: #it's NoneType:
+		return (False,0,'INVTR') # follow pattern for no car found. This should probably actually be a real Exception
 	datstr = doy2monthdate(year,date)
 	foundcar = ''
 	carfound = False
@@ -332,7 +335,7 @@ def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=196
 			outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
 			return (carfound,foundcar,outstr,legs)
 	if not carfound:
-		return (carfound,mincap)
+		return (carfound,mincap,"INVCAR")
 
 def findspecificcardates(legid,carid,curs):
 	grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -382,8 +385,7 @@ def parse_n_route_string(string,curs):
 		date = request[15:18]
 		if requesttype == "Q":
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
-			if carquery[0]:
-				return carquery[2]
+			return carquery[2]
 		elif requesttype in ["R","D"]: # reservation time
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
@@ -437,10 +439,9 @@ if __name__ == "__main__": # we're not in a lambda anymore
 	config.read("reservations.ini")
 	db = config['DEFAULT']['db']
 	user = config['DEFAULT']['user']
-	ps = config['DEFAULT']['ps']
 
 	# set up the db connection
-	conn = psycopg2.connect("dbname=%s user=%s password=%s" % (db,user,ps))
+	conn = sqlite3.connect(db)
 
 	cur = conn.cursor()
 	request = sys.argv[1].upper()
