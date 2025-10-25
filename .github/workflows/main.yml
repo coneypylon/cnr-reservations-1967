@@ -27,6 +27,5 @@ jobs:
     steps:
     - uses: sozo-design/curl@v1.0.2
     - name: Curl for Github Actions
-
-    with:
-      args: "https://6eybfhhyye.execute-api.ca-central-1.amazonaws.com/default/cnr-eprs-runner --header 'Content-Type: application/json' --header 'x-api-key: ${{ secrets.TESTING_KEY }}' --data '{ \"query\":\"QZTORMTL0606410002\"}'"
+      with:
+        args: "https://6eybfhhyye.execute-api.ca-central-1.amazonaws.com/default/cnr-eprs-runner --header 'Content-Type: application/json' --header 'x-api-key: ${{ secrets.TESTING_KEY }}' --data '{ \"query\":\"QZTORMTL0606410002\"}'"
