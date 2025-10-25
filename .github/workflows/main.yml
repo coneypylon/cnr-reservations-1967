@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Deploy code to Lambda
-      uses: coneypylon/action-lambda-python-zip@1.1
+      uses: coneypylon/action-lambda-python-zip@master
       with:
         platform: 'manylinux2014_x86_64'
         lambda_layer_arn: ${{ secrets.LAMBDA_LAYER_ARN }}
