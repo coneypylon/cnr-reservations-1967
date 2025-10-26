@@ -381,23 +381,23 @@ def parse_n_route_string(string,curs,conn):
 		carcode = string[13:15]
 		date = string[15:18]
 		if stringtype == "Q":
-			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
+			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
 			if carquery[0]:
 				return carquery[2]
 		elif stringtype in ["R","D"]: # reservation time
-			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
+			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
 			if carquery[0]:
-				reservation = reserve(carquery[1],carquery[3],numseats,date,cur)
+				reservation = reserve(carquery[1],carquery[3],numseats,date,curs)
 				if reservation[0] == 0:
 					conn.commit()
 				return reservation[1]
 		elif stringtype in ["K","A"]:
-			cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
+			cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
 			if cancellation[0] == 0:
 				conn.commit()
 			return cancellation[1]
 		elif stringtype =="E":
-			result = equip(startlegp,destlegp,trainid,carcode,accomreq,numseats,date,cur)
+			result = equip(startlegp,destlegp,trainid,carcode,accomreq,numseats,date,curs)
 			if result[0] == 0:
 				conn.commit()
 			return result[1]
@@ -408,10 +408,10 @@ def parse_n_route_string(string,curs,conn):
 		trainid = string[7:10]
 		date = string[10:13]
 		if stringtype == "T":
-			manifest = trainman(startcity,endcity,trainid,date,cur)
+			manifest = trainman(startcity,endcity,trainid,date,curs)
 			return manifest[1]
 		elif stringtype == "X":
-			closeout = close(startcity,endcity,trainid,date,cur)
+			closeout = close(startcity,endcity,trainid,date,curs)
 			if closeout[0] == 0:
 				conn.commit()
 			return closeout[1]
