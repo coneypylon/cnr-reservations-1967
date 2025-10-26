@@ -36,20 +36,17 @@ def findcars(legid,accomtype,curs):
 def fetchcar(legid,carcode,accomtype,curs,remcap=True):
 	foundcars = findcars(legid,accomtype,curs)
 	matchedcar = ''
-	if carcode not in ["00"]: # not a control code, ergo they want a specific car
-		outlst = []
-		for car in foundcars:
-			if remcap: # remaining capacity, probably all we care about
-				usage = car[0]
-			else:
-				raise NotImplementedError
-			if carcode == '99':
-				outlst.append((usage,car[1],car[2],legid,car[4]))
-			elif car[1].endswith(carcode):
-				outlst.append((usage,car[1],car[2],legid,car[4]))
-		return outlst
-	else:
-		raise NotImplementedError
+	outlst = []
+	for car in foundcars:
+		if remcap: # remaining capacity, probably all we care about
+			usage = car[0]
+		else:
+			raise NotImplementedError
+		if carcode == '99' or carcode == '00':
+			outlst.append((usage,car[1],car[2],legid,car[4]))
+		elif car[1].endswith(carcode):
+			outlst.append((usage,car[1],car[2],legid,car[4]))
+	return outlst
 
 
 def queryleg(legid, carcode,accomtype, curs):
@@ -170,7 +167,10 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 
 def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 	westbound=getdirection(startcity,endcity,curs)
-	foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
+	try:
+		foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
+	except TypeError:
+		return (dict(),[],dict())
 	capacity = 0
 	mincap = dict()
 	cars=[]
@@ -318,21 +318,40 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 		outstr += "\n"
 	return (0,outstr[:-1])
 
-def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
-	mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
-	datstr = doy2monthdate(year,date)
-	foundcar = ''
+def findalternates(date,startcity,endcity,trainid,curs):
+	findconnectingtrainsq = "SELECT trainid FROM (SELECT trainid, COUNT(*) as matched FROM trainlist WHERE startcity='%s' OR endcity='%s' GROUP BY trainid) WHERE matched=2" % (startcity,endcity)
+	finddirecttrainsq = "SELECT trainid FROM trainlist WHERE startcity='%s' AND endcity='%s'" % (startcity,endcity)
+	curs.execute(findconnectingtrainsq)
+	connectingmatches = curs.fetchall()
+	curs.execute(finddirecttrainsq)
+	directmatches = curs.fetchall()
+	matches = connectingmatches + directmatches
+	outlst = []
+	for match in matches:
+		outlst.append(match[0])
+	return outlst
+
+def query(carcode,ogtrainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
 	carfound = False
-	totalmincap = sum(mincap.values())
-	for car in mincap.keys():
-		capacity = mincap[car]
-		if capacity > reqseats:
-			carfound = True
-			foundcar = car
-			outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
-			return (carfound,foundcar,outstr,legs)
+	foundcar = ''
+	datstr = doy2monthdate(year,date)
+	if carcode != '00':
+		trains = [ogtrainid]
+	else:
+		trains = findalternates(date,startcity,endcity,ogtrainid,curs)
+	for trainid in trains:
+		mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
+		foundcar = ''
+		totalmincap = sum(mincap.values())
+		for car in mincap.keys():
+			capacity = mincap[car]
+			if capacity > reqseats:
+				carfound = True
+				foundcar = car
+				outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
+				return (carfound,foundcar,outstr,legs)
 	if not carfound:
-		return (carfound,mincap)
+		return (carfound,mincap,'UNXXX/YY-ZZ-'+datstr)
 
 def findspecificcardates(legid,carid,curs):
 	grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -382,8 +401,7 @@ def parse_n_route_string(string,curs):
 		date = request[15:18]
 		if requesttype == "Q":
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
-			if carquery[0]:
-				return carquery[2]
+			return carquery[2]
 		elif requesttype in ["R","D"]: # reservation time
 			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
 			if carquery[0]:
