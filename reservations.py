@@ -368,7 +368,7 @@ def reserve(carid,legs,seats,date,curs,year=1967):
 		return (2,str(e))
 
 
-def parse_n_route_string(string,curs):
+def parse_n_route_string(string,curs,conn):
 	if len(request) != 18 and len(request) != 13:
 		return "usage: script.py RASLPDLPNSTRNCNCDT"
 	elif len(request) == 18: # normal card
@@ -444,4 +444,4 @@ if __name__ == "__main__": # we're not in a lambda anymore
 
 	cur = conn.cursor()
 	request = sys.argv[1].upper()
-	print(parse_n_route_string(request,cur))
+	print(parse_n_route_string(request,cur,conn))
