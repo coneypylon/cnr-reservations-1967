@@ -494,18 +494,18 @@ def parse_n_route_string(string,curs,conn):
             return closeout[1]
 
 if __name__ == "__main__": # we're not in a lambda anymore
-    #try:
-    # fetch the config
-    config = configparser.ConfigParser()
-    config.read("reservations.ini")
-    db = config.get('DEFAULT','db', fallback='db.sqlite3')
-    
-    # set up the db connection
-    conn = sqlite3.connect(db)
+    try:
+        # fetch the config
+        config = configparser.ConfigParser()
+        config.read("reservations.ini")
+        db = config.get('DEFAULT','db', fallback='db.sqlite3')
+        
+        # set up the db connection
+        conn = sqlite3.connect(db)
 
-    cur = conn.cursor()
-    request = sys.argv[1].upper()
-    print(parse_n_route_string(request,cur,conn))
-    #except Exception as e:
+        cur = conn.cursor()
+        request = sys.argv[1].upper()
+        print(parse_n_route_string(request,cur,conn))
+    except Exception as e:
         # per manual
-    #    print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
+        print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
