@@ -1,7 +1,40 @@
 import sqlite3
 
-def parsedestinations(routestr):
-    
+# class helpers
+def readcars(trainid,type,carstring):
+    outlst = []
+    if len(carstring) < 4:
+        return outlst
+    for x in range(0,len(carstring),4):
+        carnum = carstring[x:x+2]
+        capacity = carstring[x+2:x+4]
+        outlst.append(car(trainid,carnum,type,capacity))
+    return outlst
+
+def convroutes(routestr):
+    outlst = []
+    for x in range(0,len(routestr)-3,3):
+        outlst.append((routestr[x:x+3],routestr[x+3:x+6]))
+    return outlst
+
+class car:
+    def __init__(self,trainid,carnum,type,capacity):
+        self.trainid = trainid
+        self.carnum = carnum
+        self.id = trainid + carnum
+        self.type = type
+        self.capacity = int(capacity)
+
+class train:
+    def __init__(self,trainid,days,route,coaches,clubs):
+        self.id = trainid
+        self.days = days
+        self.route = convroutes(route)
+        self.coaches = readcars(trainid,"Z",coaches)
+        self.clubs = readcars(trainid,"Y",clubs)
+    def __str__(self):
+        outstr = "Train %s, runs %s, from  %s to %s, %s coaches, %s club cars" % (self.id,self.days,self.route[0][0],self.route[len(self.route)-1][1],len(self.coaches),len(self.clubs))
+        return outstr
 
 def createdb(schemafile,data,dbname,prompt=True):
     if prompt:
@@ -27,18 +60,23 @@ def createdb(schemafile,data,dbname,prompt=True):
         if cont[0].lower()!='y':
             return 0
     
-    # read train routes
+    # read trains
     trains = []
 
     with open(data,"r") as f:
         s = f.readline()
-        s = f.readline() # skip header
+        # go past header
+        s = f.readline()
         while s != '' and s != '\n':
-            trains.append(s[:-1].split(','))
+            sp = s[:-1].split(',')
+            trains.append(train(sp[0],sp[1],sp[2],sp[3],sp[4]))
             s = f.readline()
+    if prompt:
+        print("The following trains were loaded from the file")
+        for x in trains:
+            print(x)
     
-    # we assume the set of trains is well-formed.
-    for train in trains:
+    
 
 
 if __name__ == "__main__":
