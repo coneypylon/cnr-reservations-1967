@@ -372,7 +372,7 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
                 foundcar = car
                 outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
                 return (carfound,foundcar,outstr,legs)
-    return (False,'','UNABLE')
+    return (False,'','UN00') # technically it should be a little smarter about this, but w/e
 
 def findspecificcardates(legid,carid,curs):
     grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -441,6 +441,9 @@ def parse_n_route_string(string,curs,conn):
             if result[0] == 0:
                 conn.commit()
             return result[1]
+        elif stringtype =="O":
+            result = "TEST MSG THE QUICK BROWN FOX1234567890END"
+            return result
     else: # supervisor card
         stringtype = string[0]
         startcity = string[1:4]
@@ -457,14 +460,18 @@ def parse_n_route_string(string,curs,conn):
             return closeout[1]
 
 if __name__ == "__main__": # we're not in a lambda anymore
-    # fetch the config
-    config = configparser.ConfigParser()
-    config.read("reservations.ini")
-    db = config['DEFAULT']['db']
-    
-    # set up the db connection
-    conn = sqlite3.connect(db)
+    try:
+        # fetch the config
+        config = configparser.ConfigParser()
+        config.read("reservations.ini")
+        db = config.get('DEFAULT','db', fallback='db.sqlite3')
+        
+        # set up the db connection
+        conn = sqlite3.connect(db)
 
-    cur = conn.cursor()
-    request = sys.argv[1].upper()
-    print(parse_n_route_string(request,cur,conn))
+        cur = conn.cursor()
+        request = sys.argv[1].upper()
+        print(parse_n_route_string(request,cur,conn))
+    except:
+        # per manual
+        print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")

@@ -6,21 +6,16 @@ A simple recreation of the 1960s Collins 8401-based reservation system that CN u
 ### Setup
 1. DB Setup
 
-Make a Postgres database that Python can access. You can create a user for it (I did) or just use postgres (obviously not super safe by default)
-Once the database is made, use the tables export included in the repo to execute the commands needed to recreate the required schema. Note that it's a dump of my dev database and has a few extra tables not currently used.
+If running locally, run createdb.py from the command line. There will be a few questions, and then a long wait while it generates the records. There are between 5,000 and 30,000 records to be generated for each train, so I recommend starting the process, saying yes to the prompts until after the prompt that warns you about the time, and then getting a coffee.
 
 2. Config creation
 
-You'll need to make a reservations.ini file with the following contents:
+If you want to change the default DB name, make a 'reservations.ini' with contents like the following:
 
 ```
 [DEFAULT]
-db=<YOURDBHERE>
-user=<YOURDBUSERHERE>
-ps-<YOURDBUSERPASSWORDHERE>
+db='db.sqlite3'
 ```
-
-Note that the values should be filled based on your setup in #1
 
 3. Operate!
 
