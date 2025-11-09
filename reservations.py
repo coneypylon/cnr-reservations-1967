@@ -1,4 +1,4 @@
-import sqlite3
+import psycopg2
 import sys
 from datetime import datetime,UTC
 import configparser
@@ -6,9 +6,6 @@ import os
 
 # custom exceptions
 class LegClosed(Exception):
-	pass
-
-class NotFoundError(Exception):
 	pass
 
 def doy2monthdate(year,day):
@@ -61,8 +58,8 @@ def queryleg(legid, carcode,accomtype, curs):
 
 def findedges(startcity,endcity,trainid,curs):
 	wb = getdirection(startcity,endcity,curs)
-	startindexq = "SELECT idex FROM citiesmain WHERE mnemonic='%s';" % startcity
-	endindexq = "SELECT idex FROM citiesmain WHERE mnemonic='%s';" % endcity
+	startindexq = "SELECT index FROM citiesmain WHERE mnemonic='%s';" % startcity
+	endindexq = "SELECT index FROM citiesmain WHERE mnemonic='%s';" % endcity
 	curs.execute(startindexq)
 	startindex = curs.fetchone()[0]
 	curs.execute(endindexq)
@@ -143,7 +140,6 @@ def findextremelegs(startcity,endcity,trainid,date,westbound,curs):
 			AND date = %s 
 			ORDER BY startindex %s;''' \
 			% (startcity,trainid,date,sortdir)
-	print(findstartlegq)
 	curs.execute(findstartlegq)
 	foundlegs = [curs.fetchone()]
 	dayoftrain = foundlegs[0][5]
@@ -175,6 +171,7 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 	westbound=getdirection(startcity,endcity,curs)
 	foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
+	capacity = 0
 	mincap = dict()
 	cars=[]
 	carlegs=dict()
@@ -197,10 +194,12 @@ def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 			carlegs[car[1]] = [(car[3],car[0],car[4])]
 		carid = car[1]
 		carcap = car[0]
+		cdid = car[2]
 		if not carid in mincap.keys():
 			mincap[carid] = carcap
 		elif carcap < mincap[carid]:
 			mincap[carid] = carcap
+		capacity = mincap
 	return (mincap,legs,carlegs)
 
 def getcities(legid,curs):
@@ -209,13 +208,13 @@ def getcities(legid,curs):
 	return curs.fetchone()
 
 def getindex(city,curs):
-	getcityvaluesq = "SELECT idex FROM citiesmain WHERE mnemonic='%s'" % city
+	getcityvaluesq = "SELECT index FROM citiesmain WHERE mnemonic='%s'" % city
 	curs.execute(getcityvaluesq)
-	idex = curs.fetchone()
-	if idex == '' or idex == None:
+	index = curs.fetchone()
+	if index == '':
 		raise ValueError
 	else:
-		return int(idex[0])
+		return int(index[0])
 
 def getdirection(startcity,endcity,curs):
 	sindex = getindex(startcity,curs)
@@ -320,10 +319,7 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
 	return (0,outstr[:-1])
 
 def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
-	try:
-		mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
-	except TypeError: #it's NoneType:
-		return (False,0,'INVTR') # follow pattern for no car found. This should probably actually be a real Exception
+	mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
 	datstr = doy2monthdate(year,date)
 	foundcar = ''
 	carfound = False
@@ -336,7 +332,7 @@ def query(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=196
 			outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
 			return (carfound,foundcar,outstr,legs)
 	if not carfound:
-		return (carfound,mincap,"INVCAR")
+		return (carfound,mincap)
 
 def findspecificcardates(legid,carid,curs):
 	grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -372,63 +368,65 @@ def reserve(carid,legs,seats,date,curs,year=1967):
 		return (2,str(e))
 
 
-def parse_n_route_string(string,curs):
-	if len(request) != 18 and len(request) != 13:
+def parse_n_route_string(string,curs,conn):
+	if len(string) != 18 and len(string) != 13:
 		return "usage: script.py RASLPDLPNSTRNCNCDT"
-	elif len(request) == 18: # normal card
-		requesttype = request[0]
-		accomreq = request[1]
-		startlegp = request[2:5]
-		destlegp = request[5:8]
-		numseats = int(request[8:10])
-		trainid = request[10:13]
-		carcode = request[13:15]
-		date = request[15:18]
-		if requesttype == "Q":
-			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
-			return carquery[2]
-		elif requesttype in ["R","D"]: # reservation time
-			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
+	elif len(string) == 18: # normal card
+		stringtype = string[0]
+		accomreq = string[1]
+		startlegp = string[2:5]
+		destlegp = string[5:8]
+		numseats = int(string[8:10])
+		trainid = string[10:13]
+		carcode = string[13:15]
+		date = string[15:18]
+		if stringtype == "Q":
+			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
 			if carquery[0]:
-				reservation = reserve(carquery[1],carquery[3],numseats,date,cur)
+				return carquery[2]
+		elif stringtype in ["R","D"]: # reservation time
+			carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
+			if carquery[0]:
+				reservation = reserve(carquery[1],carquery[3],numseats,date,curs)
 				if reservation[0] == 0:
 					conn.commit()
 				return reservation[1]
-		elif requesttype in ["K","A"]:
-			cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,cur)
+		elif stringtype in ["K","A"]:
+			cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
 			if cancellation[0] == 0:
 				conn.commit()
 			return cancellation[1]
-		elif requesttype =="E":
-			result = equip(startlegp,destlegp,trainid,carcode,accomreq,numseats,date,cur)
+		elif stringtype =="E":
+			result = equip(startlegp,destlegp,trainid,carcode,accomreq,numseats,date,curs)
 			if result[0] == 0:
 				conn.commit()
 			return result[1]
 	else: # supervisor card
-		requesttype = request[0]
-		startcity = request[1:4]
-		endcity = request[4:7]
-		trainid = request[7:10]
-		date = request[10:13]
-		if requesttype == "T":
-			manifest = trainman(startcity,endcity,trainid,date,cur)
+		stringtype = string[0]
+		startcity = string[1:4]
+		endcity = string[4:7]
+		trainid = string[7:10]
+		date = string[10:13]
+		if stringtype == "T":
+			manifest = trainman(startcity,endcity,trainid,date,curs)
 			return manifest[1]
-		elif requesttype == "X":
-			closeout = close(startcity,endcity,trainid,date,cur)
+		elif stringtype == "X":
+			closeout = close(startcity,endcity,trainid,date,curs)
 			if closeout[0] == 0:
 				conn.commit()
 			return closeout[1]
-
 
 if __name__ == "__main__": # we're not in a lambda anymore
 	# fetch the config
 	config = configparser.ConfigParser()
 	config.read("reservations.ini")
 	db = config['DEFAULT']['db']
+	user = config['DEFAULT']['user']
+	ps = config['DEFAULT']['ps']
 
 	# set up the db connection
-	conn = sqlite3.connect(db)
+	conn = psycopg2.connect("dbname=%s user=%s password=%s" % (db,user,ps))
 
 	cur = conn.cursor()
 	request = sys.argv[1].upper()
-	print(parse_n_route_string(request,cur))
+	print(parse_n_route_string(request,cur,conn))
