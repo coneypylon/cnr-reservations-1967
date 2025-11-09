@@ -8,6 +8,9 @@ import os
 class LegClosed(Exception):
 	pass
 
+class NotFoundError(Exception):
+	pass
+
 def doy2monthdate(year,day):
 	date_string = "%s %s" % (year,day)
 	date_object = datetime.strptime(date_string, '%Y %j')
@@ -140,6 +143,7 @@ def findextremelegs(startcity,endcity,trainid,date,westbound,curs):
 			AND date = %s 
 			ORDER BY startindex %s;''' \
 			% (startcity,trainid,date,sortdir)
+	print(findstartlegq)
 	curs.execute(findstartlegq)
 	foundlegs = [curs.fetchone()]
 	dayoftrain = foundlegs[0][5]
@@ -171,7 +175,6 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
 def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 	westbound=getdirection(startcity,endcity,curs)
 	foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
-	capacity = 0
 	mincap = dict()
 	cars=[]
 	carlegs=dict()
@@ -194,12 +197,10 @@ def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
 			carlegs[car[1]] = [(car[3],car[0],car[4])]
 		carid = car[1]
 		carcap = car[0]
-		cdid = car[2]
 		if not carid in mincap.keys():
 			mincap[carid] = carcap
 		elif carcap < mincap[carid]:
 			mincap[carid] = carcap
-		capacity = mincap
 	return (mincap,legs,carlegs)
 
 def getcities(legid,curs):
@@ -211,7 +212,7 @@ def getindex(city,curs):
 	getcityvaluesq = "SELECT idex FROM citiesmain WHERE mnemonic='%s'" % city
 	curs.execute(getcityvaluesq)
 	idex = curs.fetchone()
-	if idex == '':
+	if idex == '' or idex == None:
 		raise ValueError
 	else:
 		return int(idex[0])
@@ -418,27 +419,12 @@ def parse_n_route_string(string,curs):
 				conn.commit()
 			return closeout[1]
 
-def lambda_handler(event, context): # we are in a lambda
-	db = os.environ.get('db')
-	user = os.environ.get('dbuser')
-	ps = os.environ.get('dbpass')
-	url = os.environ.get('url')
-	conn = psycopg2.connect("host=%s dbname=%s user=%s password=%s" % (url,db,user,ps))
-	cur = conn.cursor()
-	request = event.query.upper()
-	response = parse_n_route_string(request,cur)
-	return {
-		'statusCode': 200,
-		'body': json.dumps(response)
-	}
-
 
 if __name__ == "__main__": # we're not in a lambda anymore
 	# fetch the config
 	config = configparser.ConfigParser()
 	config.read("reservations.ini")
 	db = config['DEFAULT']['db']
-	user = config['DEFAULT']['user']
 
 	# set up the db connection
 	conn = sqlite3.connect(db)
