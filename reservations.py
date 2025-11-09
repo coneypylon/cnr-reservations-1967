@@ -177,8 +177,7 @@ def findothertrains(startcity,endcity,trainid,date,curs):
             FROM legedgeindex 
             WHERE startcity='%s' 
             AND trainid<>'%s' 
-            AND date = %s 
-            ORDER BY startindex %s;''' \
+            AND date = %s;''' \
             % (startcity,trainid,date,sortdir)
     curs.execute(findstartlegtrainq)
     foundlegsraw = curs.fetchall()
@@ -190,8 +189,7 @@ def findothertrains(startcity,endcity,trainid,date,curs):
             FROM legedgeindex 
             WHERE endcity='%s' 
             AND trainid<>'%s' 
-            AND date - dayoftrain + %s = %s 
-            ORDER BY startindex %s;''' \
+            AND date - dayoftrain + %s = %s;''' \
             % (endcity,trainid,dayoftrain,date,sortdir)
     curs.execute(findendlegq)
     endlegsraw = curs.fetchall()
