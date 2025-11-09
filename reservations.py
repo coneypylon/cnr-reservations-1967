@@ -214,6 +214,8 @@ def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
     mincap = dict()
     cars=[]
     carlegs=dict()
+    if None in foundlegs:
+        raise NotFoundError
     if len(foundlegs) <= 0: # the train doesn't exist
         raise NotFoundError
     elif len(foundlegs) == 1: #it's a single leg trip
@@ -235,12 +237,10 @@ def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
             carlegs[car[1]] = [(car[3],car[0],car[4])]
         carid = car[1]
         carcap = car[0]
-        cdid = car[2]
         if not carid in mincap.keys():
             mincap[carid] = carcap
         elif carcap < mincap[carid]:
             mincap[carid] = carcap
-        capacity = mincap
     return (mincap,legs,carlegs)
 
 def getcities(legid,curs):
@@ -264,6 +264,17 @@ def getdirection(startcity,endcity,curs):
         return True
     else:
         return False
+
+def validate(startcity,endcity,curs):
+    try:
+        sindex = getindex(startcity,curs)
+    except:
+        return (False,"INVFRM")
+    try:
+        eindex = getindex(endcity,curs)
+    except:
+        return (False,"INVTO")
+    return (True,'')
 
 def createorconfirmtrain(trainid,startcity,endcity,curs):
     fetchtrainq = "SELECT * FROM trains WHERE id='%s'" % trainid
@@ -360,6 +371,9 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
     return (0,outstr[:-1])
 
 def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
+    validated = validate(startcity,endcity,curs)
+    if not validated[0]:
+        return (False,'',validated[1])
     acceptabletrains = [intrainid]
     if incarcode == '00':
         acceptabletrains.extend(findothertrains(startcity,endcity,intrainid,date,curs))
@@ -367,6 +381,7 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
     else:
         carcode = incarcode
     notFound = False
+    CarNotFound = False
     for trainid in acceptabletrains:
         try:
             mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
@@ -376,6 +391,8 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
         datstr = doy2monthdate(year,date)
         foundcar = ''
         totalmincap = sum(mincap.values())
+        if mincap == {}:
+            CarNotFound = True
         for car in mincap.keys():
             capacity = mincap[car]
             if capacity > reqseats:
@@ -384,7 +401,9 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
                 outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
                 return (carfound,foundcar,outstr,legs)
     if notFound:
-        return(False,'','INVCITY')
+        return(False,'','INVTR')
+    elif CarNotFound:
+        return(False,'','INVCAR')
     else:
         return (False,'','UN00') # technically it should be a little smarter about this, but w/e
 
@@ -434,6 +453,8 @@ def parse_n_route_string(string,curs,conn):
         trainid = string[10:13]
         carcode = string[13:15]
         date = string[15:18]
+        if int(date) < 0 or int(date) > 366:
+            return ("INVDTE")
         if stringtype == "Q":
             carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
             return carquery[2]
@@ -473,18 +494,18 @@ def parse_n_route_string(string,curs,conn):
             return closeout[1]
 
 if __name__ == "__main__": # we're not in a lambda anymore
-    try:
-        # fetch the config
-        config = configparser.ConfigParser()
-        config.read("reservations.ini")
-        db = config.get('DEFAULT','db', fallback='db.sqlite3')
-        
-        # set up the db connection
-        conn = sqlite3.connect(db)
+    #try:
+    # fetch the config
+    config = configparser.ConfigParser()
+    config.read("reservations.ini")
+    db = config.get('DEFAULT','db', fallback='db.sqlite3')
+    
+    # set up the db connection
+    conn = sqlite3.connect(db)
 
-        cur = conn.cursor()
-        request = sys.argv[1].upper()
-        print(parse_n_route_string(request,cur,conn))
-    except:
+    cur = conn.cursor()
+    request = sys.argv[1].upper()
+    print(parse_n_route_string(request,cur,conn))
+    #except Exception as e:
         # per manual
-        print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
+    #    print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
