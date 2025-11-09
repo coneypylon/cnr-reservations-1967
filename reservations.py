@@ -348,8 +348,8 @@ def equip(startcity,endcity, trainid, carcode, accomtype, seats, date, curs,year
 
 def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
     mincap, legs, carlegs = getcaps(startcity,endcity,trainid,date,'99','A',curs)
-    if len(carlegs) > 10:
-        return (1,"INVTO")
+    #if len(carlegs) > 10: mystical old check that I don't remember
+    #    return (1,"INVTO")
     legnames = []
     outstr = '     '
     for leg in range(0,len(legs)):
