@@ -178,7 +178,7 @@ def findothertrains(startcity,endcity,trainid,date,curs):
             WHERE startcity='%s' 
             AND trainid<>'%s' 
             AND date = %s;''' \
-            % (startcity,trainid,date,sortdir)
+            % (startcity,trainid,date)
     curs.execute(findstartlegtrainq)
     foundlegsraw = curs.fetchall()
     dayoftrain = foundlegsraw[0][1]
@@ -190,7 +190,7 @@ def findothertrains(startcity,endcity,trainid,date,curs):
             WHERE endcity='%s' 
             AND trainid<>'%s' 
             AND date - dayoftrain + %s = %s;''' \
-            % (endcity,trainid,dayoftrain,date,sortdir)
+            % (endcity,trainid,dayoftrain,date)
     curs.execute(findendlegq)
     endlegsraw = curs.fetchall()
     endlegs = []
@@ -385,6 +385,8 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
             mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
         except NotFoundError:
             notFound = True
+            if trainid == intrainid:
+                break
             continue
         datstr = doy2monthdate(year,date)
         foundcar = ''
