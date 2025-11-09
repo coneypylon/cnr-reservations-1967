@@ -168,39 +168,42 @@ def cancel(carcode,trainid,date,startcity,endcity,reqseats,accomreq,curs,year=19
     return (0,outstr)
 
 def findothertrains(startcity,endcity,trainid,date,curs):
-    westbound=getdirection(startcity,endcity,curs)
-    if westbound:
-        sortdir = "ASC"
-    else:
-        sortdir = "DESC"
-    findstartlegtrainq = '''SELECT DISTINCT trainid, dayoftrain
-            FROM legedgeindex 
-            WHERE startcity='%s' 
-            AND trainid<>'%s' 
-            AND date = %s;''' \
-            % (startcity,trainid,date)
-    curs.execute(findstartlegtrainq)
-    foundlegsraw = curs.fetchall()
-    dayoftrain = foundlegsraw[0][1]
-    foundlegs = []
-    for x in foundlegsraw:
-        foundlegs.append(x[0])
-    findendlegq = '''SELECT DISTINCT trainid
-            FROM legedgeindex 
-            WHERE endcity='%s' 
-            AND trainid<>'%s' 
-            AND date - dayoftrain + %s = %s;''' \
-            % (endcity,trainid,dayoftrain,date)
-    curs.execute(findendlegq)
-    endlegsraw = curs.fetchall()
-    endlegs = []
-    for x in endlegsraw:
-        endlegs.append(x[0])
-    outlst = []
-    for x in foundlegs:
-        if x in endlegs:
-            outlst.append(x)
-    return outlst
+    try:
+        westbound=getdirection(startcity,endcity,curs)
+        if westbound:
+            sortdir = "ASC"
+        else:
+            sortdir = "DESC"
+        findstartlegtrainq = '''SELECT DISTINCT trainid, dayoftrain
+                FROM legedgeindex 
+                WHERE startcity='%s' 
+                AND trainid<>'%s' 
+                AND date = %s;''' \
+                % (startcity,trainid,date)
+        curs.execute(findstartlegtrainq)
+        foundlegsraw = curs.fetchall()
+        dayoftrain = foundlegsraw[0][1]
+        foundlegs = []
+        for x in foundlegsraw:
+            foundlegs.append(x[0])
+        findendlegq = '''SELECT DISTINCT trainid
+                FROM legedgeindex 
+                WHERE endcity='%s' 
+                AND trainid<>'%s' 
+                AND date - dayoftrain + %s = %s;''' \
+                % (endcity,trainid,dayoftrain,date)
+        curs.execute(findendlegq)
+        endlegsraw = curs.fetchall()
+        endlegs = []
+        for x in endlegsraw:
+            endlegs.append(x[0])
+        outlst = []
+        for x in foundlegs:
+            if x in endlegs:
+                outlst.append(x)
+        return outlst
+    except IndexError: # no trains
+        return []
 
 def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
     westbound=getdirection(startcity,endcity,curs)
