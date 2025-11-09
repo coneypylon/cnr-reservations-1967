@@ -9,6 +9,9 @@ import os
 class LegClosed(Exception):
     pass
 
+class NotFoundError(Exception):
+    pass
+
 def doy2monthdate(year,day):
     date_string = "%s %s" % (year,day)
     date_object = datetime.strptime(date_string, '%Y %j')
@@ -203,11 +206,17 @@ def findothertrains(startcity,endcity,trainid,date,curs):
 
 def getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs):
     westbound=getdirection(startcity,endcity,curs)
-    foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
+    try:
+        foundlegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
+    except TypeError:
+        raise NotFoundError
+
     mincap = dict()
     cars=[]
     carlegs=dict()
-    if len(foundlegs) == 1: #it's a single leg trip
+    if len(foundlegs) <= 0: # the train doesn't exist
+        raise NotFoundError
+    elif len(foundlegs) == 1: #it's a single leg trip
         legid = foundlegs[0][0]
         legs = [legid]
         cars = queryleg(legid,carcode,accomreq,curs)
@@ -243,8 +252,8 @@ def getindex(city,curs):
     getcityvaluesq = "SELECT idex FROM citiesmain WHERE mnemonic='%s'" % city
     curs.execute(getcityvaluesq)
     index = curs.fetchone()
-    if index == '':
-        raise ValueError
+    if index == '' or index == None:
+        raise NotFoundError
     else:
         return int(index[0])
 
@@ -357,10 +366,12 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
         carcode = '99'
     else:
         carcode = incarcode
+    notFound = False
     for trainid in acceptabletrains:
         try:
             mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
-        except TypeError:
+        except NotFoundError:
+            notFound = True
             continue
         datstr = doy2monthdate(year,date)
         foundcar = ''
@@ -372,7 +383,10 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
                 foundcar = car
                 outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
                 return (carfound,foundcar,outstr,legs)
-    return (False,'','UN00') # technically it should be a little smarter about this, but w/e
+    if notFound:
+        return(False,'','INVCITY')
+    else:
+        return (False,'','UN00') # technically it should be a little smarter about this, but w/e
 
 def findspecificcardates(legid,carid,curs):
     grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -422,8 +436,7 @@ def parse_n_route_string(string,curs,conn):
         date = string[15:18]
         if stringtype == "Q":
             carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
-            if carquery[0]:
-                return carquery[2]
+            return carquery[2]
         elif stringtype in ["R","D"]: # reservation time
             carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
             if carquery[0]:
