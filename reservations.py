@@ -1,4 +1,5 @@
 import sqlite3
+import psycopg2
 import sys
 from datetime import datetime,UTC
 import configparser
