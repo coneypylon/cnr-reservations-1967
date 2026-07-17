@@ -4,6 +4,8 @@ import sys
 from datetime import datetime,UTC
 import configparser
 import os
+from time import sleep
+from random import uniform
 
 # custom exceptions
 class LegClosed(Exception):
@@ -409,7 +411,13 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
     elif CarNotFound:
         return(False,'','INVCAR',[])
     else:
-        return (False,'','UN00',[]) # technically it should be a little smarter about this, but w/e
+        carstr = ""
+        for x in mincap.keys():
+            carstr+=pad(str(mincap[car]),2) + '-'
+        if len(carstr) > 0:
+            carstr = carstr[:-1]
+        unablestr = 'UN%s/%s%s' % (pad(str(totalmincap),2),carstr,datstr)
+        return (False,'',unablestr,[]) # technically it should be a little smarter about this, but w/e
 
 def findspecificcardates(legid,carid,curs):
     grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -445,9 +453,12 @@ def reserve(carid,legs,seats,date,curs,year=1967):
         return (2,str(e))
 
 
-def parse_n_route_string(string,curs,conn):
+def parse_n_route_string(string,curs,conn,kiosk=False)->str:
     if len(string) != 18 and len(string) != 13:
-        return "usage: script.py RASLPDLPNSTRNCNCDT"
+        if kiosk:
+            raise KeyError
+        else:
+            return "usage: script.py RASLPDLPNSTRNCNCDT"
     elif len(string) == 18: # normal card
         stringtype = string[0]
         accomreq = string[1]
@@ -458,7 +469,7 @@ def parse_n_route_string(string,curs,conn):
         carcode = string[13:15]
         date = string[15:18]
         if int(date) < 0 or int(date) > 366:
-            return ("INVDTE")
+            return "INVDTE"
         if stringtype == "Q":
             carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
             return carquery[2]
@@ -469,6 +480,8 @@ def parse_n_route_string(string,curs,conn):
                 if reservation[0] == 0:
                     conn.commit()
                 return reservation[1]
+            else:
+                return carquery[2]
         elif stringtype in ["K","A"]:
             cancellation = cancel(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
             if cancellation[0] == 0:
@@ -482,6 +495,8 @@ def parse_n_route_string(string,curs,conn):
         elif stringtype =="O":
             result = "TEST MSG THE QUICK BROWN FOX1234567890END"
             return result
+        else:
+            return "INVACT"
     else: # supervisor card
         stringtype = string[0]
         startcity = string[1:4]
@@ -496,6 +511,8 @@ def parse_n_route_string(string,curs,conn):
             if closeout[0] == 0:
                 conn.commit()
             return closeout[1]
+        else:
+            return "INVACT"
 
 if __name__ == "__main__": # we're not in a lambda anymore
     try:
@@ -509,9 +526,21 @@ if __name__ == "__main__": # we're not in a lambda anymore
 
         cur = conn.cursor()
         if sys.argv[1] == 'INT':
+            loc = input("Enter Location Code [KIT]: ")
+            if loc == '':
+                loc = 'KIT'
+            elif len(loc) < 3:
+                loc = pad(loc,3)
+            elif len(loc) > 3:
+                loc = loc[:3]
             while True:
                 try:
-                    print(parse_n_route_string(input(),cur,conn))
+                    req = input().upper()
+                    sleep(uniform(0.1,1.5))
+                    print("$\n      " + loc + "A" + req + "#")
+                    sleep(uniform(0.5,5))
+                    result = parse_n_route_string(req,cur,conn,kiosk=True)
+                    print('      ' + result)
                 except KeyboardInterrupt:
                     try:
                         if input(" PASS? ") == 'PASS': # real secure, but nice for a kiosk
