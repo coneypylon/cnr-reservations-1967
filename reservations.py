@@ -507,6 +507,13 @@ if __name__ == "__main__": # we're not in a lambda anymore
         conn = sqlite3.connect(db)
 
         cur = conn.cursor()
+        if sys.argv[1] == 'INT':
+            while True:
+                try:
+                    print(parse_n_route_string(input(),cur,conn))
+                except Exception as e:
+                    # per manual
+                    print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
         request = sys.argv[1].upper()
         print(parse_n_route_string(request,cur,conn))
     except Exception as e:
