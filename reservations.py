@@ -94,6 +94,7 @@ def findroutelegs(startleg,endleg,curs,westbound=True):
     else:
         sort = "DESC"
         comp = ">="
+    # TODO: handle closed legs
     findorderedq = '''SELECT legid, closed 
         FROM legedgeindex 
         WHERE %s %s startindex 
@@ -371,10 +372,10 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
         outstr += "\n"
     return (0,outstr[:-1])
 
-def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967):
+def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967)->tuple[bool,str,str,list[int]]:
     validated = validate(startcity,endcity,curs)
     if not validated[0]:
-        return (False,'',validated[1])
+        return (False,'',validated[1],[])
     acceptabletrains = [intrainid]
     if incarcode == '00':
         acceptabletrains.extend(findothertrains(startcity,endcity,intrainid,date,curs))
@@ -404,11 +405,11 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
                 outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
                 return (carfound,foundcar,outstr,legs)
     if notFound:
-        return(False,'','INVTR')
+        return(False,'','INVTR',[])
     elif CarNotFound:
-        return(False,'','INVCAR')
+        return(False,'','INVCAR',[])
     else:
-        return (False,'','UN00') # technically it should be a little smarter about this, but w/e
+        return (False,'','UN00',[]) # technically it should be a little smarter about this, but w/e
 
 def findspecificcardates(legid,carid,curs):
     grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -511,6 +512,12 @@ if __name__ == "__main__": # we're not in a lambda anymore
             while True:
                 try:
                     print(parse_n_route_string(input(),cur,conn))
+                except KeyboardInterrupt:
+                    try:
+                        if input(" PASS? ") == 'PASS': # real secure, but nice for a kiosk
+                            exit()
+                    except KeyboardInterrupt:
+                        pass
                 except Exception as e:
                     # per manual
                     print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
