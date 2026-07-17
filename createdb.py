@@ -1,5 +1,5 @@
 import sqlite3
-from main import equip
+from reservations import equip
 import datetime
 
 def tqdm_no_op(iterable, *args, **kwargs):
