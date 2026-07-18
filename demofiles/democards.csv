@@ -1,0 +1,20 @@
+Front,Back (Query)
+"A school trip wants to book 36 tickets from Kitchener to Toronto on October 4th, returning on October 6th","Trains 153/154 are probably ideal to start with. 4+ calls:
+QV111TOR3615400277
+RV111TOR3615400277
+QVTOR1113615300279
+RVTOR1113615300279"
+A family of 4 wants to know if there is space on a train from Kitchener to Montreal on Labour Day.,"Labour Day is the first Monday of September, so day 247. Since there is no direct train from Kitchener to Montreal, two trains must be used. 154 to Toronto, and 66 from Toronto to Montreal should work since we don’t really care about what time these trains leave at (we would in real life)
+QZ111TOR0415400247
+QZTORMTL0406600247
+Depending on availability, they may want to reserve these seats."
+"Someone’s penpal sweetheart wants to take a train in from Chicago to meet them in Kitchener and continue on to Toronto on the weekend of November 17th, coming back on the Sunday.","4 queries and 4 reservations:
+QVCHGTOR0115899321
+QV111TOR0115899321
+QVTORCHG0115999323
+QVTOR1110115999323
+RVCHGTOR0115899321
+RV111TOR0115899321
+RVTORCHG0115999323
+RVTOR1110115999323"
+"A group of 6 friends wants to go coast to coast to celebrate graduation, starting from Kitchener on September 1 to Montreal, leaving Montreal for Halifax on September 4th, then going to Vancouver from there starting on September 6th. They will book the return trips once they get to Vancouver.",

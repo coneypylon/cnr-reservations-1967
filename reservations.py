@@ -377,49 +377,52 @@ def trainman(startcity,endcity,trainid,date,curs,year=1967,westbound=True):
     return (0,outstr[:-1])
 
 def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year=1967)->tuple[bool,str,str,list[int]]:
-    validated = validate(startcity,endcity,curs)
-    if not validated[0]:
-        return (False,'',validated[1],[])
-    acceptabletrains = [intrainid]
-    if incarcode == '00':
-        acceptabletrains.extend(findothertrains(startcity,endcity,intrainid,date,curs))
-        carcode = '99'
-    else:
-        carcode = incarcode
-    notFound = False
-    CarNotFound = False
-    for trainid in acceptabletrains:
-        try:
-            mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
-        except NotFoundError:
-            notFound = True
-            if trainid == intrainid:
-                break
-            continue
-        datstr = doy2monthdate(year,date)
-        foundcar = ''
-        totalmincap = sum(mincap.values())
-        if mincap == {}:
-            CarNotFound = True
-        for car in mincap.keys():
-            capacity = mincap[car]
-            if capacity > reqseats:
-                carfound = True
-                foundcar = car
-                outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
-                return (carfound,foundcar,outstr,legs)
-    if notFound:
-        return(False,'','INVTR',[])
-    elif CarNotFound:
-        return(False,'','INVCAR',[])
-    else:
-        carstr = ""
-        for x in mincap.keys():
-            carstr+=pad(str(mincap[car]),2) + '-'
-        if len(carstr) > 0:
-            carstr = carstr[:-1]
-        unablestr = 'UN%s/%s%s' % (pad(str(totalmincap),2),carstr,datstr)
-        return (False,'',unablestr,[])
+    try:
+        validated = validate(startcity,endcity,curs)
+        if not validated[0]:
+            return (False,'',validated[1],[])
+        acceptabletrains = [intrainid]
+        if incarcode == '00':
+            acceptabletrains.extend(findothertrains(startcity,endcity,intrainid,date,curs))
+            carcode = '99'
+        else:
+            carcode = incarcode
+        notFound = False
+        CarNotFound = False
+        for trainid in acceptabletrains:
+            try:
+                mincap,legs = getcaps(startcity,endcity,trainid,date,carcode,accomreq,curs)[0:2]
+            except NotFoundError:
+                notFound = True
+                if trainid == intrainid:
+                    break
+                continue
+            datstr = doy2monthdate(year,date)
+            foundcar = ''
+            totalmincap = sum(mincap.values())
+            if mincap == {}:
+                CarNotFound = True
+            for car in mincap.keys():
+                capacity = mincap[car]
+                if capacity > reqseats:
+                    carfound = True
+                    foundcar = car
+                    outstr = 'AV%s%s' % (pad(str(totalmincap),3),datstr)
+                    return (carfound,foundcar,outstr,legs)
+        if notFound:
+            return(False,'','INVTR',[])
+        elif CarNotFound:
+            return(False,'','INVCAR',[])
+        else:
+            carstr = ""
+            for x in mincap.keys():
+                carstr+=pad(str(mincap[car]),2) + '-'
+            if len(carstr) > 0:
+                carstr = carstr[:-1]
+            unablestr = 'UN%s/%s%s' % (pad(str(totalmincap),2),carstr,datstr)
+            return (False,'',unablestr,[])
+    except LegClosed:
+        return (False,'','CLOSED',[])
 
 def findspecificcardates(legid,carid,curs):
     grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -455,17 +458,24 @@ def reserve(carid,legs,seats,date,curs,year=1967):
         return (2,str(e))
 
 
-def parse_n_route_string(string,curs,conn,kiosk=False)->str:
-    if len(string) != 18 and len(string) != 13:
+def parse_n_route_string(string,curs,conn,kiosk=False,loc='MTL')->str:
+    if string[0] == 'O':
+        result = "TEST MSG THE QUICK BROWN FOX1234567890END"
+        return result
+    elif len(string) != 18 and len(string) != 13:
         if kiosk:
-            raise KeyError
+            return "INVINP"
         else:
             return "usage: script.py RASLPDLPNSTRNCNCDT"
     elif len(string) == 18: # normal card
         stringtype = string[0]
         accomreq = string[1]
         startlegp = string[2:5]
+        if startlegp == '111':
+            startlegp = loc
         destlegp = string[5:8]
+        if destlegp == '111':
+            destlegp = loc
         numseats = int(string[8:10])
         trainid = string[10:13]
         carcode = string[13:15]
@@ -497,20 +507,25 @@ def parse_n_route_string(string,curs,conn,kiosk=False)->str:
             if result[0] == 0:
                 conn.commit()
             return result[1]
-        elif stringtype =="O":
-            result = "TEST MSG THE QUICK BROWN FOX1234567890END"
-            return result
         else:
             return "INVACT"
     else: # supervisor card
         stringtype = string[0]
         startcity = string[1:4]
+        if startcity == '111':
+            startcity = loc
         endcity = string[4:7]
+        if endcity == '111':
+            endcity = loc
         trainid = string[7:10]
         date = string[10:13]
         if stringtype == "T":
             manifest = trainman(startcity,endcity,trainid,date,curs)
-            return manifest[1]
+            if kiosk:
+                mantext = '\n' + manifest[1]
+            else:
+                mantext = manifest[1]
+            return mantext
         elif stringtype == "X":
             closeout = close(startcity,endcity,trainid,date,curs)
             if closeout[0] == 0:
@@ -525,13 +540,13 @@ if __name__ == "__main__": # we're not in a lambda anymore
         config = configparser.ConfigParser()
         config.read("reservations.ini")
         db = config.get('DEFAULT','db', fallback='db.sqlite3')
-        
+      
         # set up the db connection
         conn = sqlite3.connect(db)
 
         cur = conn.cursor()
         if sys.argv[1] == 'INT':
-            loc = input("Enter Location Code [KIT]: ")
+            loc = '' # input("Enter Location Code [KIT]: ")
             if loc == '':
                 loc = 'KIT'
             elif len(loc) < 3:
@@ -542,19 +557,16 @@ if __name__ == "__main__": # we're not in a lambda anymore
                 try:
                     req = input().upper()
                     sleep(uniform(0.1,1.5))
-                    print("$\n      " + loc + "A" + req + "#")
-                    sleep(uniform(0.5,5))
-                    result = parse_n_route_string(req,cur,conn,kiosk=True)
-                    print('      ' + result)
-                except KeyboardInterrupt:
-                    try:
-                        if input(" PASS? ") == 'PASS': # real secure, but nice for a kiosk
-                            exit()
-                    except KeyboardInterrupt:
-                        pass
+                    print("$\n      " + loc + "A" + req + "#",end='',flush=True)
+                    longs = uniform(0.5,6)
+                    sleep(longs)
+                    if longs > 5.5:
+                        raise Exception('long wait')
+                    result = parse_n_route_string(req,cur,conn,kiosk=True,loc=loc)
+                    print(' ' + result)
                 except Exception as e:
                     # per manual
-                    print("R\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n")
+                    print("\nR\n E\n  S\n   E\n    N\n     D\a\a\a\n\n\n\n\n\n\n",flush=True)
         request = sys.argv[1].upper()
         print(parse_n_route_string(request,cur,conn))
     except Exception as e:

@@ -137,7 +137,7 @@ INSERT INTO "citiesmain" ("idex", "mnemonic", "commonname") VALUES
 (370, 'JAS', 'Jasper'),
 (390, 'KAM', 'Kamloops'),
 (150, 'KGN', 'Kingston'),
-(0, 'KIT', 'Kitchener'),
+(234, 'KIT', 'Kitchener'),
 (235, 'LDN', 'London'),
 (100, 'LEV', 'Levis'),
 (220, 'LLC', 'Longlac'),

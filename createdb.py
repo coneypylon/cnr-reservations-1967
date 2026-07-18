@@ -1,6 +1,7 @@
 import sqlite3
 from reservations import equip
 import datetime
+import sys
 
 def tqdm_no_op(iterable, *args, **kwargs):
     """Dummy function to replace tqdm when it is not installed."""
@@ -62,7 +63,7 @@ class train:
         self.start = self.route[0][0]
         self.end = self.route[-1][1]
         self.cars = readcars(trainid,"Z",coaches)
-        self.cars.extend(readcars(trainid,"Y",clubs))
+        self.cars.extend(readcars(trainid,"V",clubs))
     def __str__(self):
         outstr = "Train %s, runs %s, from  %s to %s, %s cars" % (self.id,self.days,self.route[0][0],self.route[len(self.route)-1][1],len(self.cars))
         return outstr
@@ -156,4 +157,4 @@ def createdb(schemafile,data,dbname,prompt=True):
 
 
 if __name__ == "__main__":
-    createdb("sqliteschema.sql","1967trains.csv","db.sqlite3")
+    createdb("sqliteschema.sql",sys.argv[1],"db.sqlite3")
