@@ -43,6 +43,8 @@ def fetchcar(legid,carcode,accomtype,curs,remcap=True):
     foundcars = findcars(legid,accomtype,curs)
     outlst = []
     for car in foundcars:
+        if car[4] == True:
+            raise LegClosed
         if remcap: # remaining capacity, probably all we care about
             usage = car[0]
         else:
@@ -119,7 +121,7 @@ def closeleg(legid,curs):
 def close(startcity,endcity,trainid,date,curs,year=1967):
     ts = timestmp()
     tdiff = int(ts[0:3]) - int(date)
-    if tdiff > 7 or tdiff < 0:
+    if tdiff <= 0:
         return (1,"INVDTE")
     westbound = getdirection(startcity,endcity,curs)
     extremelegs = findextremelegs(startcity,endcity,trainid,date,westbound,curs)
@@ -417,7 +419,7 @@ def query(incarcode,intrainid,date,startcity,endcity,reqseats,accomreq,curs,year
         if len(carstr) > 0:
             carstr = carstr[:-1]
         unablestr = 'UN%s/%s%s' % (pad(str(totalmincap),2),carstr,datstr)
-        return (False,'',unablestr,[]) # technically it should be a little smarter about this, but w/e
+        return (False,'',unablestr,[])
 
 def findspecificcardates(legid,carid,curs):
     grabq = "SELECT id, closed FROM cardatetrain WHERE legid=%s AND carid='%s';" % (legid,carid)
@@ -448,7 +450,7 @@ def reserve(carid,legs,seats,date,curs,year=1967):
         outstr = "OK%s %s %s" % (carid,dt, ts)
         return (0,outstr)
     except LegClosed:
-        return(1,"INVDTE")
+        return(1,"CLOSED")
     except Exception as e:
         return (2,str(e))
 
@@ -471,7 +473,10 @@ def parse_n_route_string(string,curs,conn,kiosk=False)->str:
         if int(date) < 0 or int(date) > 366:
             return "INVDTE"
         if stringtype == "Q":
-            carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
+            try:
+                carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
+            except LegClosed:
+                return "CLOSED"
             return carquery[2]
         elif stringtype in ["R","D"]: # reservation time
             carquery = query(carcode,trainid,date,startlegp,destlegp,numseats,accomreq,curs)
